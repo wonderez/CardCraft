@@ -6,8 +6,8 @@
 VSVersionInfo(
   ffi=FixedFileInfo(
     # 版本号：主版本.次版本.修订版.构建版
-    filevers=(1, 0, 1, 0),
-    prodvers=(1, 0, 1, 0),
+    filevers=(1, 0, 1, 1),
+    prodvers=(1, 0, 1, 1),
     # 文件标志
     mask=0x3f,
     flags=0x0,
@@ -25,12 +25,12 @@ VSVersionInfo(
         u'080404B0',
         [StringStruct(u'CompanyName', u'CardCraft Studio'),
         StringStruct(u'FileDescription', u'CardCraft - 将 Markdown 转换为精美卡片'),
-        StringStruct(u'FileVersion', u'1.0.1.0'),
+        StringStruct(u'FileVersion', u'1.0.1.1'),
         StringStruct(u'InternalName', u'CardCraft'),
         StringStruct(u'LegalCopyright', u'Copyright © 2024 CardCraft Studio. All rights reserved.'),
         StringStruct(u'OriginalFilename', u'CardCraft.exe'),
         StringStruct(u'ProductName', u'CardCraft'),
-        StringStruct(u'ProductVersion', u'1.0.1.0')])
+        StringStruct(u'ProductVersion', u'1.0.1.1')])
       ]), 
     VarFileInfo([VarStruct(u'Translation', [2052, 1200])])
   ]
