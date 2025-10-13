@@ -1,0 +1,37 @@
+# UTF-8
+#
+# 版本信息文件
+# 用于 Windows 可执行文件的版本信息
+#
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    # 版本号：主版本.次版本.修订版.构建版
+    filevers=(1, 0, 1, 0),
+    prodvers=(1, 0, 1, 0),
+    # 文件标志
+    mask=0x3f,
+    flags=0x0,
+    # 操作系统
+    OS=0x40004,
+    # 文件类型
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo(
+      [
+      StringTable(
+        u'080404B0',
+        [StringStruct(u'CompanyName', u'CardCraft Studio'),
+        StringStruct(u'FileDescription', u'CardCraft - 将 Markdown 转换为精美卡片'),
+        StringStruct(u'FileVersion', u'1.0.1.0'),
+        StringStruct(u'InternalName', u'CardCraft'),
+        StringStruct(u'LegalCopyright', u'Copyright © 2024 CardCraft Studio. All rights reserved.'),
+        StringStruct(u'OriginalFilename', u'CardCraft.exe'),
+        StringStruct(u'ProductName', u'CardCraft'),
+        StringStruct(u'ProductVersion', u'1.0.1.0')])
+      ]), 
+    VarFileInfo([VarStruct(u'Translation', [2052, 1200])])
+  ]
+)
