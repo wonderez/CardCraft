@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QVBoxLayout,
                                QToolButton, QMenu, QDialog, QTextEdit,
                                QDialogButtonBox, QSpinBox, QGridLayout, QLineEdit)
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QRect, QSize
-from PyQt6.QtGui import QAction, QIcon, QColor, QLinearGradient, QPainter, QBrush, QKeySequence, QTextCursor
+from PyQt6.QtGui import QAction, QIcon, QColor, QLinearGradient, QPainter, QBrush, QKeySequence, QTextCursor, QFontDatabase
 from src.ui.editor_widget import EditorWidget
 from src.ui.preview_widget import PreviewWidget
 from src.utils.style_manager import StyleManager
@@ -407,8 +407,47 @@ class MainWindow(QMainWindow):
         self.theme_selector.setStyleSheet(self.get_combobox_style())
         right_layout.addWidget(self.theme_selector)
         
+        # 字体选择器
+        font_label = QLabel("字体:")
+        font_label.setStyleSheet("color: rgba(255, 255, 255, 0.8); font-size: 13px;")
+        right_layout.addWidget(font_label)
+        
+        self.font_selector = QComboBox()
+        self.font_selector.setFixedWidth(120)
+        self.font_selector.setStyleSheet(self.get_combobox_style())
+        
+        # 获取系统字体
+        from PyQt6.QtGui import QFontInfo
+        font_families = QFontDatabase.families()
+        
+        # 添加常用字体到前面
+        common_fonts = ["微软雅黑", "Arial", "Times New Roman", "宋体", "黑体", "SimSun", "SimHei"]
+        added_fonts = set()
+        
+        # 先添加常用字体
+        for font in common_fonts:
+            if font in font_families:
+                self.font_selector.addItem(font)
+                added_fonts.add(font)
+        
+        # 添加分隔符
+        self.font_selector.insertSeparator(self.font_selector.count())
+        
+        # 添加所有其他字体
+        for font in font_families:
+            if font not in added_fonts:
+                self.font_selector.addItem(font)
+        
+        # 从设置中加载上次选择的字体
+        saved_font = self.style_manager.get_setting("font_family", "微软雅黑")
+        font_index = self.font_selector.findText(saved_font)
+        if font_index >= 0:
+            self.font_selector.setCurrentIndex(font_index)
+        
+        right_layout.addWidget(self.font_selector)
+        
         # 字体大小选择器
-        font_size_label = QLabel("字体:")
+        font_size_label = QLabel("字体大小:")
         font_size_label.setStyleSheet("color: rgba(255, 255, 255, 0.8); font-size: 13px;")
         right_layout.addWidget(font_size_label)
         
@@ -417,7 +456,26 @@ class MainWindow(QMainWindow):
         self.font_size_selector.addItems(["小", "标准", "大", "超大", "最大"])
         self.font_size_selector.setCurrentIndex(1)  # 默认选择"标准"
         self.font_size_selector.setStyleSheet(self.get_combobox_style())
+        
+        # 从设置中加载上次选择的字体大小
+        saved_font_size = self.style_manager.get_setting("font_size", "标准")
+        font_size_index = self.font_size_selector.findText(saved_font_size)
+        if font_size_index >= 0:
+            self.font_size_selector.setCurrentIndex(font_size_index)
+        
         right_layout.addWidget(self.font_size_selector)
+        
+        # 图片优化选择器
+        image_quality_label = QLabel("图片优化:")
+        image_quality_label.setStyleSheet("color: rgba(255, 255, 255, 0.8); font-size: 13px;")
+        right_layout.addWidget(image_quality_label)
+        
+        self.image_quality_selector = QComboBox()
+        self.image_quality_selector.setFixedWidth(100)
+        self.image_quality_selector.addItems(["不优化", "优化", "超级优化"])
+        self.image_quality_selector.setCurrentIndex(1)  # 默认选择"优化"
+        self.image_quality_selector.setStyleSheet(self.get_combobox_style())
+        right_layout.addWidget(self.image_quality_selector)
         
         # 导出按钮
         self.export_btn = QPushButton("📸 导出图片")
@@ -1102,6 +1160,7 @@ class MainWindow(QMainWindow):
         self.editor.scrollChanged.connect(self.preview.handle_scroll)
         self.preview.pageChanged.connect(self.on_page_changed)
         self.theme_selector.currentIndexChanged.connect(self.on_theme_changed)
+        self.font_selector.currentIndexChanged.connect(self.on_font_changed)
         self.font_size_selector.currentIndexChanged.connect(self.on_font_size_changed)
         
         if hasattr(self.preview, 'sizeChanged'):
@@ -1155,6 +1214,19 @@ class MainWindow(QMainWindow):
             self.theme_info_label.setText(f"主题: {display_name}")
             self.status_bar.showMessage(f"已切换到: {display_name}", 3000)
     
+    def on_font_changed(self, index):
+        """处理字体改变"""
+        font_family = self.font_selector.currentText()
+        
+        # 更新预览组件的字体
+        self.preview.change_font_family(font_family)
+        
+        # 保存字体设置
+        self.style_manager.save_setting("font_family", font_family)
+        
+        # 更新状态栏
+        self.status_bar.showMessage(f"字体: {font_family}", 3000)
+    
     def on_font_size_changed(self, index):
         """处理字体大小改变"""
         font_sizes = {
@@ -1170,6 +1242,9 @@ class MainWindow(QMainWindow):
         
         # 更新预览组件的字体大小
         self.preview.change_font_size(font_size)
+        
+        # 保存字体大小设置
+        self.style_manager.save_setting("font_size", font_size_name)
         
         # 更新状态栏
         self.status_bar.showMessage(f"字体大小: {font_size_name}", 3000)
@@ -1217,8 +1292,12 @@ class MainWindow(QMainWindow):
         if folder:
             try:
                 theme_name = self.theme_selector.currentText()
-                self.status_bar.showMessage(f"正在导出图片 (主题: {theme_name})...", 0)
-                self.preview.export_pages(folder)
+                image_quality = self.image_quality_selector.currentIndex()
+                quality_names = ["不优化", "优化", "超级优化"]
+                quality_name = quality_names[image_quality]
+                
+                self.status_bar.showMessage(f"正在导出图片 (主题: {theme_name}, 优化: {quality_name})...", 0)
+                self.preview.export_pages(folder, image_quality)
                 
             except Exception as e:
                 QMessageBox.critical(

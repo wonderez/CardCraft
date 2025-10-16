@@ -836,16 +836,26 @@ class PreviewWidget(QWidget):
         self.exporter.finished.connect(self.on_export_finished)
         self.exporter.page_exported.connect(self.on_page_exported)
     
-    def export_pages(self, folder: str):
+    def export_pages(self, folder: str, image_quality: int = 0):
         """导出所有页面为图片"""
         if not self.current_pages:
             QMessageBox.warning(self, "Warning", "No content to export")
             return
         
+        # 根据图片优化级别设置质量参数
+        quality_map = {
+            0: 100,  # 不优化 - 最高质量
+            1: 85,   # 优化 - 中等质量
+            2: 70    # 超级优化 - 较低质量但文件更小
+        }
+        
+        quality = quality_map.get(image_quality, 100)
+        
         # 保存当前状态
         self._is_exporting = True
         self._saved_preview_mode = self.preview_mode
         self._saved_current_page = self.current_page
+        self._export_folder = folder
         
         # 创建进度对话框
         self.progress_dialog = QProgressDialog(
@@ -895,13 +905,18 @@ class PreviewWidget(QWidget):
         
         self.progress_dialog.canceled.connect(self.on_export_canceled)
         
+        # 连接信号以正确传递质量参数
+        self.exporter.progress.connect(self.on_export_progress)
+        self.exporter.finished.connect(self.on_export_finished)
+        self.exporter.page_exported.connect(self.on_page_exported)
+        
         # 开始导出（始终以实际大小导出）
         self.exporter.export_pages(
             self.current_pages,
             folder,
             self.html_generator,
             format="PNG",
-            quality=100
+            quality=quality
         )
     
     def on_export_progress(self, current: int, total: int):
@@ -1033,6 +1048,13 @@ class PreviewWidget(QWidget):
         # 更新分页器的字体大小
         self.paginator.set_font_size(font_size)
         # 字体大小改变时需要重新计算分页
+        if self.markdown_text:
+            self.update_content(self.markdown_text)
+    
+    def change_font_family(self, font_family: str):
+        """改变字体"""
+        self.html_generator.set_font_family(font_family)
+        # 字体改变时需要重新计算分页
         if self.markdown_text:
             self.update_content(self.markdown_text)
     

@@ -188,6 +188,7 @@ class StyleManager:
     def __init__(self, theme: str = "xiaohongshu"):
         self.current_theme = theme
         self.custom_styles = {}
+        self.settings = {}  # 存储用户设置
         
     def get_theme(self, theme_name: str = None) -> ThemeConfig:
         """获取主题配置"""
@@ -198,6 +199,14 @@ class StyleManager:
     def get_theme_list(self) -> list:
         """获取所有主题列表"""
         return list(self.THEMES.keys())
+    
+    def get_setting(self, key: str, default_value=None):
+        """获取设置值"""
+        return self.settings.get(key, default_value)
+    
+    def save_setting(self, key: str, value):
+        """保存设置值"""
+        self.settings[key] = value
     
     def get_theme_display_names(self) -> Dict[str, str]:
         """获取主题显示名称"""
@@ -244,9 +253,12 @@ class StyleManager:
         r, g, b = self.hex_to_rgb(hex_color)
         return f"rgba({r}, {g}, {b}, {alpha})"
     
-    def generate_css(self, theme_name: str = None, font_size: int = 18) -> str:
+    def generate_css(self, theme_name: str = None, font_size: int = 18, font_family: str = None) -> str:
         """生成主题CSS"""
         theme = self.get_theme(theme_name)
+        
+        # 使用传入的字体或主题默认字体
+        current_font_family = font_family if font_family else theme.font_family
         
         # 生成派生颜色
         primary_light = self.lighten_color(theme.primary_color, 0.9)
@@ -264,7 +276,7 @@ class StyleManager:
             --accent-color: {theme.accent_color or theme.secondary_color};
             --text-color: {theme.text_color};
             --link-color: {theme.link_color or theme.primary_color};
-            --font-family: {theme.font_family};
+            --font-family: {current_font_family};
             --heading-font: {theme.heading_font};
             --code-font: {theme.code_font};
             --primary-light: {primary_light};

@@ -42,6 +42,10 @@ class HTMLGenerator:
         self.base_font_size = size
         self.font_size = size  # 同时更新font_size属性
         
+    def set_font_family(self, font_family: str):
+        """设置字体"""
+        self.font_family = font_family
+        
     def generate(self, content: str, page_num: int = 0, total_pages: int = 0) -> str:
         """
         生成完整的 HTML 页面
@@ -52,7 +56,7 @@ class HTMLGenerator:
             total_pages: 总页数
         """
         # 生成主题CSS
-        theme_css = self.style_manager.generate_css(self.current_theme, self.base_font_size)
+        theme_css = self.style_manager.generate_css(self.current_theme, self.base_font_size, getattr(self, 'font_family', None))
         
         # 生成页面特定CSS
         page_css = self.get_page_css()
