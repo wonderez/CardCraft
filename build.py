@@ -26,7 +26,7 @@ class AppBuilder:
         
         # 应用信息
         self.app_name = "CardCraft"
-        self.app_version = "1.0.0"
+        self.app_version = "1.0.3"
         self.app_description = "CardCraft - Markdown转精美卡片编辑器"
         
     def clean_build(self):
