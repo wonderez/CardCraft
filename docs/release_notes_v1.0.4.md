@@ -2,15 +2,34 @@
 
 发布日期：2025-10-14
 
+
+
+## 👀 新增功能
+
+### 核心改进
+
+- 新增图片优化选项
+- 默认75%压缩, 在不改变图片质量的情况下, 大幅度降低图片大小
+
+## 🥵 界面优化
+
+### 核心改进
+
+- 优化界面效果, 删除无用组件
+- 增加光影粒子背景效果, 更具现代气息
+- 工具栏布局优化, 占位更简介, 功能更多
+- 移除markdown编辑工具栏, 用不到
+- 移除菜单栏, 没用
+
 ## 🖼️ 图片显示优化
 
 ### 核心修复
 
 - **长图片显示问题修复**：解决了长图片（如800x1200等非标准比例）被截断的问题
 - **CSS样式优化**：
-  - 将.content类的样式修改为`min-height: 100%`和`overflow: visible !important`
-  - 保持img标签的响应式设置`max-width: 100%; height: auto`
-- **JavaScript改进**：在ensureContentFit函数中设置`content.style.maxHeight = 'none'`和`content.style.overflow = 'visible'`
+  - 将.content类的样式修改为 `min-height: 100%`和 `overflow: visible !important`
+  - 保持img标签的响应式设置 `max-width: 100%; height: auto`
+- **JavaScript改进**：在ensureContentFit函数中设置 `content.style.maxHeight = 'none'`和 `content.style.overflow = 'visible'`
 - **预览组件优化**：优化了generate_fit_html方法中的缩放逻辑，确保图片完整显示
 
 ### 技术改进
@@ -29,6 +48,7 @@
 ## 🎯 修复验证
 
 此版本修复了以下场景中的图片显示问题：
+
 - 纵向长图片（如800x1200）在预览和导出时被截断
 - 非标准比例图片在不同主题下的显示异常
 - 图片内容在实际大小预览模式下无法完整查看

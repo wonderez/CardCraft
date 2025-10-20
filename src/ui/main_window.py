@@ -646,23 +646,54 @@ class MainWindow(QMainWindow):
         from PyQt6.QtGui import QFontInfo
         font_families = QFontDatabase.families()
         
-        # 添加常用字体到前面
+        # 获取最近使用的字体列表
+        recent_fonts = self.style_manager.get_setting("recent_fonts", [])
+        
+        # 常用字体列表
         common_fonts = ["微软雅黑", "Arial", "Times New Roman", "宋体", "黑体", "SimSun", "SimHei"]
         added_fonts = set()
         
-        # 先添加常用字体
+        # 1. 添加最近使用的字体（最多5个）
+        if recent_fonts:
+            for font in recent_fonts[:5]:  # 只取前5个
+                if font in font_families and font not in added_fonts:
+                    self.font_selector.addItem(font)
+                    added_fonts.add(font)
+            
+            # 如果有最近使用的字体，添加分隔符
+            if added_fonts:
+                self.font_selector.insertSeparator(self.font_selector.count())
+        
+        # 2. 添加常用字体（如果还没添加）
         for font in common_fonts:
-            if font in font_families:
+            if font in font_families and font not in added_fonts:
                 self.font_selector.addItem(font)
                 added_fonts.add(font)
         
         # 添加分隔符
         self.font_selector.insertSeparator(self.font_selector.count())
         
-        # 添加所有其他字体
+        # 3. 添加所有其他字体（中文字体优先）
+        # 分离中文字体和其他字体
+        chinese_fonts = []
+        other_fonts = []
+        
         for font in font_families:
             if font not in added_fonts:
-                self.font_selector.addItem(font)
+                # 判断是否为中文字体（包含中文字符或常见中文字体名称）
+                if any(char in font for char in "微软雅黑宋体黑体楷体仿宋体思源方正汉仪文泉驿等线圆体") or \
+                   any(keyword in font for keyword in ["SimSun", "SimHei", "KaiTi", "FangSong", "Microsoft YaHei", "PingFang", "Hiragino", "Noto Sans CJK", "Source Han Sans", "WenQuanYi"]):
+                    chinese_fonts.append(font)
+                else:
+                    other_fonts.append(font)
+        
+        # 先添加中文字体（按字母顺序排序）
+        for font in sorted(chinese_fonts):
+            self.font_selector.addItem(font)
+        
+        # 再添加其他字体（按字母顺序排序）
+        for font in sorted(other_fonts):
+            self.font_selector.addItem(font)
         
         # 从设置中加载上次选择的字体
         saved_font = self.style_manager.get_setting("font_family", "微软雅黑")
@@ -1597,6 +1628,22 @@ class MainWindow(QMainWindow):
         
         # 保存字体设置
         self.style_manager.save_setting("font_family", font_family)
+        
+        # 更新最近使用的字体列表
+        recent_fonts = self.style_manager.get_setting("recent_fonts", [])
+        
+        # 如果字体已在列表中，先移除
+        if font_family in recent_fonts:
+            recent_fonts.remove(font_family)
+        
+        # 将字体添加到列表开头
+        recent_fonts.insert(0, font_family)
+        
+        # 限制列表长度为最多5个
+        recent_fonts = recent_fonts[:5]
+        
+        # 保存更新后的列表
+        self.style_manager.save_setting("recent_fonts", recent_fonts)
         
         # 更新状态栏
         self.status_bar.showMessage(f"字体: {font_family}", 3000)
