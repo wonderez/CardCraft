@@ -268,7 +268,8 @@ class StyleManager:
         # 检查是否为深色主题
         is_dark = theme_name in ["dark_mode", "midnight", "douyin"]
         
-        return f"""
+        # 基础 CSS 部分
+        base_css = f"""
         /* 主题: {theme.name} */
         :root {{
             --primary-color: {theme.primary_color};
@@ -300,7 +301,44 @@ class StyleManager:
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }}
+        """
         
+        # 标题 CSS
+        headings_css = self._generate_headings_css(theme, is_dark)
+        
+        # 段落和文本 CSS
+        text_css = self._generate_text_css(theme, is_dark)
+        
+        # 列表 CSS
+        lists_css = self._generate_lists_css(theme)
+        
+        # 引用 CSS
+        blockquote_css = self._generate_blockquote_css(theme, is_dark)
+        
+        # 代码 CSS
+        code_css = self._generate_code_css(theme, is_dark)
+        
+        # 表格 CSS
+        table_css = self._generate_table_css(theme, is_dark)
+        
+        # 分隔线 CSS
+        hr_css = self._generate_hr_css(theme)
+        
+        # 链接 CSS
+        link_css = self._generate_link_css(theme)
+        
+        # 动画 CSS
+        animation_css = self._generate_animation_css()
+        
+        # 组合所有 CSS
+        full_css = (base_css + headings_css + text_css + lists_css + blockquote_css + 
+                    code_css + table_css + hr_css + link_css + animation_css)
+        
+        return full_css
+    
+    def _generate_headings_css(self, theme: ThemeConfig, is_dark: bool) -> str:
+        """生成标题样式"""
+        return f"""
         /* 标题样式 */
         h1, h2, h3, h4, h5, h6 {{
             font-family: var(--heading-font);
@@ -335,7 +373,11 @@ class StyleManager:
             margin-bottom: 18px;
             color: var(--primary-color);
         }}
-        
+        """
+    
+    def _generate_text_css(self, theme: ThemeConfig, is_dark: bool) -> str:
+        """生成段落和强调文本样式"""
+        return f"""
         /* 段落样式 */
         p {{
             margin-bottom: 22px;
@@ -358,7 +400,11 @@ class StyleManager:
             font-style: italic;
             color: {self.darken_color(theme.text_color, 0.2) if not is_dark else self.lighten_color(theme.text_color, 0.2)};
         }}
-        
+        """
+    
+    def _generate_lists_css(self, theme: ThemeConfig) -> str:
+        """生成列表样式"""
+        return f"""
         /* 列表样式 */
         ul, ol {{
             margin: 24px 0;
@@ -382,7 +428,11 @@ class StyleManager:
             color: var(--primary-color);
             font-weight: 600;
         }}
-        
+        """
+    
+    def _generate_blockquote_css(self, theme: ThemeConfig, is_dark: bool) -> str:
+        """生成引用样式"""
+        return f"""
         /* 引用样式 */
         blockquote {{
             border-left: 4px solid var(--primary-color);
@@ -411,7 +461,11 @@ class StyleManager:
             margin-bottom: 0;
             font-size: calc(var(--base-font-size) - 1px);
         }}
-        
+        """
+    
+    def _generate_code_css(self, theme: ThemeConfig, is_dark: bool) -> str:
+        """生成代码样式"""
+        return f"""
         /* 行内代码 */
         code {{
             background: {self.add_alpha(theme.primary_color, 0.1)};
@@ -426,7 +480,7 @@ class StyleManager:
         
         /* 代码块 */
         pre {{
-            background: {('#1e1e1e' if not is_dark else '#0a0a0f')};
+            background: {('#1e1e1e' if is_dark else '#0a0a0f')};
             color: #d4d4d4;
             padding: 26px;
             border-radius: 12px;
@@ -457,7 +511,11 @@ class StyleManager:
             line-height: 1.7;
             border: none;
         }}
-        
+        """
+    
+    def _generate_table_css(self, theme: ThemeConfig, is_dark: bool) -> str:
+        """生成表格样式"""
+        return f"""
         /* 表格样式 */
         table {{
             width: 100%;
@@ -497,7 +555,11 @@ class StyleManager:
         tr:last-child td {{
             border-bottom: none;
         }}
-        
+        """
+    
+    def _generate_hr_css(self, theme: ThemeConfig) -> str:
+        """生成分隔线样式"""
+        return f"""
         /* 分隔线 */
         hr {{
             border: none;
@@ -522,7 +584,11 @@ class StyleManager:
             padding: 0 10px;
             font-size: 20px;
         }}
-        
+        """
+    
+    def _generate_link_css(self, theme: ThemeConfig) -> str:
+        """生成链接样式"""
+        return f"""
         /* 链接样式 */
         a {{
             color: var(--link-color);
@@ -541,12 +607,16 @@ class StyleManager:
             margin: -2px -6px;
             border-radius: 4px;
         }}
-        
+        """
+    
+    def _generate_animation_css(self) -> str:
+        """生成动画效果"""
+        return f"""
         /* 动画效果 */
         @keyframes fadeIn {{
             from {{
                 opacity: 0;
-                transform: translateY(10px);
+                transform: translateY(20px);
             }}
             to {{
                 opacity: 1;
@@ -554,36 +624,31 @@ class StyleManager:
             }}
         }}
         
-        .content > * {{
-            animation: fadeIn 0.5s ease-out backwards;
+        h1, h2, h3, p, ul, ol, blockquote, pre {{
+            animation: fadeIn 0.6s ease-out forwards;
+            opacity: 0;
         }}
         
-        .content > *:nth-child(1) {{ animation-delay: 0.05s; }}
-        .content > *:nth-child(2) {{ animation-delay: 0.1s; }}
-        .content > *:nth-child(3) {{ animation-delay: 0.15s; }}
-        .content > *:nth-child(4) {{ animation-delay: 0.2s; }}
-        .content > *:nth-child(5) {{ animation-delay: 0.25s; }}
-        
-        /* 自定义滚动条 */
-        ::-webkit-scrollbar {{
-            width: 8px;
-            height: 8px;
-        }}
-        
-        ::-webkit-scrollbar-track {{
-            background: {self.add_alpha(theme.text_color, 0.05)};
-            border-radius: 4px;
-        }}
-        
-        ::-webkit-scrollbar-thumb {{
-            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
-            border-radius: 4px;
-        }}
-        
-        ::-webkit-scrollbar-thumb:hover {{
-            background: linear-gradient(180deg, var(--secondary-color), var(--primary-color));
-        }}
+        h1 {{ animation-delay: 0.1s; }}
+        h2 {{ animation-delay: 0.2s; }}
+        h3 {{ animation-delay: 0.3s; }}
+        p {{ animation-delay: 0.4s; }}
+        ul, ol {{ animation-delay: 0.5s; }}
+        blockquote {{ animation-delay: 0.6s; }}
+        pre {{ animation-delay: 0.7s; }}
         """
+    
+    def apply_custom_styles(self, styles: Dict[str, str]):
+        """应用自定义样式"""
+        self.custom_styles.update(styles)
+    
+    def get_combined_css(self, theme_name: str = None, font_size: int = 18, font_family: str = None) -> str:
+        """获取组合CSS（主题 + 自定义）"""
+        css = self.generate_css(theme_name, font_size, font_family)
+        if self.custom_styles:
+            custom_css = "\n".join(f"{selector} {{ {declarations} }}" for selector, declarations in self.custom_styles.items())
+            css += f"\n/* 自定义样式 */\n{custom_css}"
+        return css
     
     def get_export_settings(self, theme_name: str = None) -> Dict[str, Any]:
         """获取导出设置"""
@@ -611,19 +676,3 @@ class StyleManager:
                 "background": theme.background
             }
         }
-    
-    def apply_custom_styles(self, styles: Dict[str, str]):
-        """应用自定义样式"""
-        self.custom_styles.update(styles)
-    
-    def get_combined_css(self, theme_name: str = None, font_size: int = 18) -> str:
-        """获取组合的CSS（主题 + 自定义）"""
-        base_css = self.generate_css(theme_name, font_size)
-        
-        if self.custom_styles:
-            custom_css = "\n/* 自定义样式 */\n"
-            for selector, rules in self.custom_styles.items():
-                custom_css += f"{selector} {{\n{rules}\n}}\n"
-            return base_css + custom_css
-        
-        return base_css

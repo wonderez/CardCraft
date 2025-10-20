@@ -7,48 +7,202 @@ from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QVBoxLayout,
                                QGraphicsDropShadowEffect, QComboBox, QFrame,
                                QToolButton, QMenu, QDialog, QTextEdit,
                                QDialogButtonBox, QSpinBox, QGridLayout, QLineEdit)
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QRect, QSize
-from PyQt6.QtGui import QAction, QIcon, QColor, QLinearGradient, QPainter, QBrush, QKeySequence, QTextCursor, QFontDatabase
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QRect, QRectF, QSize, QPoint, QPointF
+from PyQt6.QtGui import QAction, QIcon, QColor, QLinearGradient, QRadialGradient, QPainter, QBrush, QKeySequence, QTextCursor, QFontDatabase, QPainterPath
 from src.ui.editor_widget import EditorWidget
 from src.ui.preview_widget import PreviewWidget
 from src.utils.style_manager import StyleManager
 import re
 
-class AuroraBackground(QWidget):
-    """极光渐变背景组件"""
+class ModernGradientBackground(QWidget):
+    """现代化渐变背景组件 - 包含粒子系统和多层次渐变"""
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("ModernGradientBackground")
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setMouseTracking(False)
+        
+        # 确保背景填充整个父窗口
+        if parent:
+            self.setGeometry(0, 0, parent.width(), parent.height())
+        
+        # 动画计时器
+        self.animation_timer = QTimer(self)
+        self.animation_timer.timeout.connect(self.update)
+        self.animation_timer.start(16)  # 约60fps，更快更流畅
+        
+        # 背景参数
         self.gradient_offset = 0
-        self.animation_timer = QTimer()
-        self.animation_timer.timeout.connect(self.update_gradient)
-        self.animation_timer.start(50)  # 20fps动画
         
-    def update_gradient(self):
-        self.gradient_offset = (self.gradient_offset + 1) % 360
-        self.update()
+        # 粒子系统
+        self.particles = []
+        self.init_particles(50)  # 初始化50个粒子
+    
+    def init_particles(self, count):
+        """初始化粒子系统"""
+        import random
+        for _ in range(count):
+            particle = {
+                'x': 0,
+                'y': 0,
+                'size': 1,
+                'speed': 0.5,
+                'angle': 0,
+                'color': QColor(255, 255, 255, 100),
+                'lifetime': 100
+            }
+            self.particles.append(particle)
+    
+    def reset_particle(self, particle, width, height):
+        """重置粒子状态"""
+        import random
+        import math
+        # 随机位置，但更倾向于边缘
+        edge = random.randint(0, 3)  # 0:上, 1:右, 2:下, 3:左
+        if edge == 0:
+            particle['x'] = random.randint(0, width)
+            particle['y'] = 0
+        elif edge == 1:
+            particle['x'] = width
+            particle['y'] = random.randint(0, height)
+        elif edge == 2:
+            particle['x'] = random.randint(0, width)
+            particle['y'] = height
+        else:
+            particle['x'] = 0
+            particle['y'] = random.randint(0, height)
         
+        # 随机大小（1-4像素）
+        particle['size'] = random.uniform(1, 4)
+        
+        # 随机速度（0.2-1.5像素/帧）
+        particle['speed'] = random.uniform(0.5, 2.5)
+        
+        # 随机方向（指向窗口内部）
+        center_x, center_y = width / 2, height / 2
+        dx, dy = center_x - particle['x'], center_y - particle['y']
+        dist = (dx**2 + dy**2)**0.5 if dx != 0 or dy != 0 else 1
+        particle['angle'] = math.atan2(dy, dx)
+        
+        # 随机透明度（30-100）
+        opacity = random.randint(30, 100)
+        
+        # 基于角度选择颜色
+        hue = ((self.gradient_offset / 360) + random.uniform(0, 0.3)) % 1
+        particle['color'] = QColor.fromHsvF(hue, random.uniform(0.6, 0.9), random.uniform(0.7, 1.0), opacity/255)
+        
+        # 随机生命周期（100-300帧）
+        particle['lifetime'] = random.randint(50, 200)
+    
+    def update_particles(self, width, height):
+        """更新粒子位置和状态"""
+        import math
+        for particle in self.particles:
+            # 更新位置
+            particle['x'] += math.cos(particle['angle']) * particle['speed']
+            particle['y'] += math.sin(particle['angle']) * particle['speed']
+            
+            # 减少生命周期
+            particle['lifetime'] -= 1
+            
+            # 如果粒子离开窗口或生命周期结束，重置
+            if (particle['x'] < -50 or particle['x'] > width + 50 or
+                particle['y'] < -50 or particle['y'] > height + 50 or
+                particle['lifetime'] <= 0):
+                self.reset_particle(particle, width, height)
+    
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         
-        # 创建动态极光渐变
-        gradient = QLinearGradient(0, 0, self.width(), self.height())
+        # 获取窗口大小
+        width = self.width()
+        height = self.height()
         
-        # 基于时间偏移的动态颜色
-        hue1 = (180 + self.gradient_offset) % 360
-        hue2 = (280 + self.gradient_offset) % 360
-        hue3 = (320 + self.gradient_offset) % 360
+        # 确保粒子系统有足够的粒子
+        import random
+        if len(self.particles) < 50:
+            self.init_particles(50 - len(self.particles))
         
-        color1 = QColor.fromHsv(hue1, 180, 60)
-        color2 = QColor.fromHsv(hue2, 200, 80)
-        color3 = QColor.fromHsv(hue3, 160, 70)
+        # 更新粒子
+        self.update_particles(width, height)
         
-        gradient.setColorAt(0, color1)
-        gradient.setColorAt(0.3, color2)
-        gradient.setColorAt(0.6, QColor(25, 25, 60))
-        gradient.setColorAt(1, color3)
+        # 创建多层次渐变背景
+        # 1. 基础层 - 深色调底色
+        base_gradient = QLinearGradient(0, 0, width, height)
+        base_gradient.setColorAt(0, QColor(10, 10, 25, 255))
+        base_gradient.setColorAt(1, QColor(20, 15, 40, 255))
+        painter.fillRect(self.rect(), base_gradient)
         
-        painter.fillRect(self.rect(), gradient)
+        # 2. 动态渐变层 - 柔和的彩色光带
+        # 计算HSV颜色变化
+        hue1 = (180 + self.gradient_offset) % 360 / 360
+        hue2 = (280 + self.gradient_offset) % 360 / 360
+        hue3 = (320 + self.gradient_offset) % 360 / 360
+        
+        # 主光带 - 从左上角到右下角
+        main_glow = QLinearGradient(0, 0, width, height)
+        main_glow.setColorAt(0, QColor.fromHsvF(hue1, 0.4, 0.2, 0.8))
+        main_glow.setColorAt(0.5, QColor.fromHsvF(hue2, 0.4, 0.3, 0.8))
+        main_glow.setColorAt(1, QColor.fromHsvF(hue3, 0.4, 0.2, 0.8))
+        
+        # 次光带 - 从右上角到左下角
+        secondary_glow = QLinearGradient(width, 0, 0, height)
+        secondary_glow.setColorAt(0, QColor.fromHsvF((hue1 + 180) % 1, 0.4, 0.2, 0.5))
+        secondary_glow.setColorAt(0.5, QColor.fromHsvF((hue2 + 180) % 1, 0.4, 0.3, 0.5))
+        secondary_glow.setColorAt(1, QColor.fromHsvF((hue3 + 180) % 1, 0.4, 0.2, 0.5))
+        
+        # 创建发光层
+        glow_layer = QPainterPath()
+        glow_layer.addRect(QRectF(self.rect()))
+        
+        # 绘制主光带（70%透明度）
+        painter.setOpacity(0.7)
+        painter.fillPath(glow_layer, main_glow)
+        
+        # 绘制次光带（40%透明度）
+        painter.setOpacity(0.4)
+        painter.fillPath(glow_layer, secondary_glow)
+        
+        # 3. 光晕层 - 柔和的光斑效果
+        painter.setOpacity(0.4)
+        for i in range(8):  # 8个大光斑
+            # 计算光晕位置（缓慢移动）
+            x = int(width * (0.1 + 0.8 * ((i * 7 + self.gradient_offset * 0.04) % 1)))
+            y = int(height * (0.1 + 0.8 * ((i * 11 + self.gradient_offset * 0.06) % 1)))
+            size = 150 + 200 * ((i * 13 + self.gradient_offset * 0.02) % 1)
+            
+            # 创建径向渐变光晕
+            halo_gradient = QRadialGradient(x, y, size, x, y)
+            halo_hue = (hue1 + i * 0.12) % 1
+            halo_gradient.setColorAt(0, QColor.fromHsvF(halo_hue, 0.6, 0.8, 0.7))
+            halo_gradient.setColorAt(0.3, QColor.fromHsvF(halo_hue, 0.6, 0.6, 0.4))
+            halo_gradient.setColorAt(1, QColor(0, 0, 0, 0))
+            
+            painter.setBrush(halo_gradient)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(QPoint(x, y), int(size), int(size))
+        
+        # 4. 粒子层
+        painter.setOpacity(1.0)
+        for particle in self.particles:
+            # 根据生命周期计算透明度衰减
+            alpha = particle['color'].alpha() * (particle['lifetime'] / 200)
+            draw_color = QColor(particle['color'])
+            draw_color.setAlpha(int(alpha))
+            
+            # 绘制粒子
+            painter.setBrush(draw_color)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(
+                QPointF(particle['x'], particle['y']), 
+                particle['size'], 
+                particle['size']
+            )
+        
+        # 更新偏移（更缓慢，更自然）
+        self.gradient_offset = (self.gradient_offset + 1.0) % 360
 
 class TableDialog(QDialog):
     """插入表格对话框"""
@@ -186,12 +340,18 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 1700, 950)
         self.setMinimumSize(1200, 700)
         
+        # 创建菜单栏
+        # self.create_menu_bar()  # 隐藏菜单栏，按用户要求
+        
         # 创建主容器
         main_container = QWidget()
         self.setCentralWidget(main_container)
         
         # 创建极光背景
-        self.aurora_bg = AuroraBackground(main_container)
+        self.modern_bg = ModernGradientBackground(main_container)
+        # 确保背景填充整个窗口
+        self.modern_bg.setGeometry(0, 0, main_container.width(), main_container.height())
+        self.modern_bg.lower()
         
         # 主布局
         main_layout = QVBoxLayout(main_container)
@@ -205,9 +365,8 @@ class MainWindow(QMainWindow):
         self.editor = EditorWidget()
         self.preview = PreviewWidget()
         
-        # 创建增强版工具栏
-        toolbar_container = self.create_enhanced_toolbar()
-        main_layout.addWidget(toolbar_container)
+        # 创建左侧工具栏和右侧工具栏
+        self.toolbar_container, self.right_toolbar = self.create_enhanced_toolbar()
         
         # 创建内容区域
         content_area = QWidget()
@@ -220,13 +379,15 @@ class MainWindow(QMainWindow):
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setObjectName("mainSplitter")
         
-        # 为组件添加玻璃容器
-        editor_container = self.create_glass_container(self.editor, "📝 Markdown 编辑器")
-        preview_container = self.create_glass_container(self.preview, "👀 实时预览")
+        # 为组件添加玻璃容器，将工具栏传递给相应容器
+        editor_container = self.create_glass_container(self.editor, "📝 Markdown 编辑器")  # 不传递工具栏，隐藏左侧工具栏
+        preview_container = self.create_glass_container(self.preview, "👀 实时预览", self.right_toolbar)
         
-        # 添加到分割器
+        # 将容器添加到分割器中
         splitter.addWidget(editor_container)
         splitter.addWidget(preview_container)
+        
+        # 设置分割器初始比例
         splitter.setSizes([850, 850])
         
         content_layout.addWidget(splitter)
@@ -240,17 +401,40 @@ class MainWindow(QMainWindow):
         self.update_char_count()
         
         # 确保背景在最底层
-        self.aurora_bg.lower()
+        self.modern_bg.lower()
+        
+    def create_menu_bar(self):
+        """创建菜单栏"""
+        menubar = self.menuBar()
+        
+        # 文件菜单
+        file_menu = menubar.addMenu('文件')
+        
+        # 打开文件动作
+        open_action = QAction('打开', self)
+        open_action.setShortcut('Ctrl+O')
+        open_action.triggered.connect(self.open_file)
+        file_menu.addAction(open_action)
+        
+        # 添加分隔线
+        file_menu.addSeparator()
+        
+        # 退出动作
+        exit_action = QAction('退出', self)
+        exit_action.setShortcut('Ctrl+Q')
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
         
     def create_enhanced_toolbar(self):
-        """创建增强版单行工具栏"""
-        toolbar_container = QFrame()
-        toolbar_container.setObjectName("toolbarContainer")
-        toolbar_container.setFixedHeight(55)
+        """创建增强版工具栏，返回左侧工具栏和右侧工具栏"""
+        # 创建左侧工具栏（编辑器使用）
+        left_toolbar = QFrame()
+        left_toolbar.setObjectName("toolbarContainer")
+        left_toolbar.setFixedHeight(40)  # 从55减小到40
         
-        main_layout = QHBoxLayout(toolbar_container)
-        main_layout.setContentsMargins(15, 8, 15, 8)
-        main_layout.setSpacing(15)
+        left_layout = QHBoxLayout(left_toolbar)
+        left_layout.setContentsMargins(10, 5, 10, 5)  # 减小边距
+        left_layout.setSpacing(8)  # 减小间距
         
         # 左侧：基础格式化按钮组
         format_group = QFrame()
@@ -259,13 +443,13 @@ class MainWindow(QMainWindow):
         format_layout.setContentsMargins(8, 3, 8, 3)
         format_layout.setSpacing(5)
         
-        # 基础格式化按钮
+        # 基础格式化按钮 - 使用简洁符号
         basic_buttons = [
             ("B", "加粗 (Ctrl+B)", self.insert_bold, True, False),
             ("I", "斜体 (Ctrl+I)", self.insert_italic, False, True),
             ("S", "删除线", self.insert_strikethrough, False, False),
-            ("`", "行内代码", self.insert_inline_code, False, False),
-            ("⟨⟩", "代码块", self.insert_code_block, False, False),
+            ("</>", "代码", self.insert_inline_code, False, False),
+            ("{}", "代码块", self.insert_code_block, False, False),
         ]
         
         for text, tooltip, callback, is_bold, is_italic in basic_buttons:
@@ -273,10 +457,12 @@ class MainWindow(QMainWindow):
             btn.setText(text)
             btn.setToolTip(tooltip)
             btn.clicked.connect(callback)
-            btn.setFixedSize(35, 35)
+            btn.setFixedSize(28, 28)  # 从35x35减小到28x28
             
             # 设置字体样式
             font = btn.font()
+            font.setFamily("Consolas, monospace")  # 使用等宽字体
+            font.setPointSize(9)  # 减小字体大小
             if is_bold:
                 font.setBold(True)
             if is_italic:
@@ -286,11 +472,11 @@ class MainWindow(QMainWindow):
             btn.setStyleSheet(self.get_tool_button_style())
             format_layout.addWidget(btn)
         
-        main_layout.addWidget(format_group)
+        left_layout.addWidget(format_group)
         
         # 添加分隔线
         separator1 = self.create_separator()
-        main_layout.addWidget(separator1)
+        left_layout.addWidget(separator1)
         
         # 中间左：标题选择器
         heading_group = QFrame()
@@ -317,7 +503,7 @@ class MainWindow(QMainWindow):
         self.heading_selector.setStyleSheet(self.get_mini_combobox_style())
         heading_layout.addWidget(self.heading_selector)
         
-        main_layout.addWidget(heading_group)
+        left_layout.addWidget(heading_group)
         
         # 中间右：列表和链接按钮组
         list_group = QFrame()
@@ -326,13 +512,13 @@ class MainWindow(QMainWindow):
         list_layout.setContentsMargins(8, 3, 8, 3)
         list_layout.setSpacing(5)
         
-        # 列表和链接按钮
+        # 列表和链接按钮 - 使用简洁符号
         list_buttons = [
-            ("◉", "无序列表", self.insert_unordered_list),
-            ("①", "有序列表", self.insert_ordered_list),
-            ("🔗", "插入链接", self.insert_link),
-            ("🖼", "插入图片", self.insert_image),
-            ("📊", "插入表格", self.insert_table),
+            ("•", "无序列表", self.insert_unordered_list),
+            ("1.", "有序列表", self.insert_ordered_list),
+            ("🔗", "链接", self.insert_link),
+            ("📷", "图片", self.insert_image),
+            ("⊞", "表格", self.insert_table),
             (">", "引用", self.insert_quote),
             ("—", "分隔线", self.insert_divider),
         ]
@@ -342,64 +528,94 @@ class MainWindow(QMainWindow):
             btn.setText(text)
             btn.setToolTip(tooltip)
             btn.clicked.connect(callback)
-            btn.setFixedSize(35, 35)
+            btn.setFixedSize(28, 28)  # 从35x35减小到28x28
+            
+            # 设置字体样式
+            font = btn.font()
+            font.setFamily("Consolas, monospace")  # 使用等宽字体
+            font.setPointSize(9)  # 减小字体大小
+            btn.setFont(font)
+            
             btn.setStyleSheet(self.get_tool_button_style())
             list_layout.addWidget(btn)
         
-        main_layout.addWidget(list_group)
+        left_layout.addWidget(list_group)
         
         # 添加分隔线
         separator2 = self.create_separator()
-        main_layout.addWidget(separator2)
+        left_layout.addWidget(separator2)
         
         # 操作按钮组
         action_group = QFrame()
         action_group.setObjectName("buttonGroup")
         action_layout = QHBoxLayout(action_group)
-        action_layout.setContentsMargins(8, 3, 8, 3)
-        action_layout.setSpacing(8)
+        action_layout.setContentsMargins(5, 2, 5, 2)  # 减小边距
+        action_layout.setSpacing(5)  # 减小间距
         
         # 撤销/重做
         undo_btn = QPushButton("↶")
         undo_btn.setToolTip("撤销 (Ctrl+Z)")
         undo_btn.clicked.connect(self.editor.undo)
-        undo_btn.setFixedSize(35, 35)
+        undo_btn.setFixedSize(28, 28)  # 从35x35减小到28x28
+        
+        # 设置字体样式
+        font = undo_btn.font()
+        font.setFamily("Consolas, monospace")  # 使用等宽字体
+        font.setPointSize(9)  # 减小字体大小
+        undo_btn.setFont(font)
+        
         undo_btn.setStyleSheet(self.get_action_button_style())
         action_layout.addWidget(undo_btn)
 
         redo_btn = QPushButton("↷")
         redo_btn.setToolTip("重做 (Ctrl+Y)")
         redo_btn.clicked.connect(self.editor.redo)
-        redo_btn.setFixedSize(35, 35)
+        redo_btn.setFixedSize(28, 28)  # 从35x35减小到28x28
+        
+        # 设置字体样式
+        font = redo_btn.font()
+        font.setFamily("Consolas, monospace")  # 使用等宽字体
+        font.setPointSize(9)  # 减小字体大小
+        redo_btn.setFont(font)
+        
         redo_btn.setStyleSheet(self.get_action_button_style())
         action_layout.addWidget(redo_btn)
 
         # 清空
-        clear_btn = QPushButton("🗑")
+        clear_btn = QPushButton("×")  # 使用更简洁的符号
         clear_btn.setToolTip("清空所有内容")
         clear_btn.clicked.connect(self.clear_content)
-        clear_btn.setFixedSize(35, 35)
+        clear_btn.setFixedSize(28, 28)  # 从35x35减小到28x28
+        
+        # 设置字体样式
+        font = clear_btn.font()
+        font.setFamily("Consolas, monospace")  # 使用等宽字体
+        font.setPointSize(9)  # 减小字体大小
+        clear_btn.setFont(font)
+        
         clear_btn.setStyleSheet(self.get_action_button_style())
         action_layout.addWidget(clear_btn)
         
-        main_layout.addWidget(action_group)
+        left_layout.addWidget(action_group)
         
         # 添加弹性空间
-        main_layout.addStretch()
+        left_layout.addStretch()
         
-        # 右侧：主题选择和导出
-        right_group = QFrame()
-        right_layout = QHBoxLayout(right_group)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(15)
+        # 左侧工具栏不需要主题选择器，它将移到右侧
         
-        # 主题选择器
-        theme_label = QLabel("主题:")
-        theme_label.setStyleSheet("color: rgba(255, 255, 255, 0.8); font-size: 13px;")
-        right_layout.addWidget(theme_label)
+        # 创建右侧工具栏（预览使用）
+        right_toolbar = QFrame()
+        right_toolbar.setObjectName("embeddedToolbarContainer")
+        right_toolbar.setFixedHeight(45)
         
+        right_layout = QHBoxLayout(right_toolbar)
+        right_layout.setContentsMargins(15, 5, 15, 5)
+        right_layout.setSpacing(10)
+        
+        # 主题选择器（不显示标签）
         self.theme_selector = QComboBox()
-        self.theme_selector.setFixedWidth(130)
+        self.theme_selector.setToolTip("主题选择")
+        self.theme_selector.setFixedWidth(120)
         themes = self.style_manager.get_theme_display_names()
         for key, name in themes.items():
             self.theme_selector.addItem(name, key)
@@ -407,13 +623,23 @@ class MainWindow(QMainWindow):
         self.theme_selector.setStyleSheet(self.get_combobox_style())
         right_layout.addWidget(self.theme_selector)
         
-        # 字体选择器
-        font_label = QLabel("字体:")
-        font_label.setStyleSheet("color: rgba(255, 255, 255, 0.8); font-size: 13px;")
-        right_layout.addWidget(font_label)
+        # 尺寸选择器（不显示标签）
+        self.size_selector = QComboBox()
+        self.size_selector.setToolTip("尺寸选择")
+        self.size_selector.setFixedWidth(80)
+        self.size_selector.addItems(["720p", "1080p", "1440p"])
+        self.size_selector.setCurrentIndex(1)  # 默认选择"1080p"
+        self.size_selector.setStyleSheet(self.get_combobox_style())
+        right_layout.addWidget(self.size_selector)
         
+        # 添加分隔线
+        right_separator1 = self.create_separator()
+        right_layout.addWidget(right_separator1)
+        
+        # 字体选择器（不显示标签）
         self.font_selector = QComboBox()
-        self.font_selector.setFixedWidth(120)
+        self.font_selector.setToolTip("字体选择")
+        self.font_selector.setFixedWidth(100)
         self.font_selector.setStyleSheet(self.get_combobox_style())
         
         # 获取系统字体
@@ -446,13 +672,10 @@ class MainWindow(QMainWindow):
         
         right_layout.addWidget(self.font_selector)
         
-        # 字体大小选择器
-        font_size_label = QLabel("字体大小:")
-        font_size_label.setStyleSheet("color: rgba(255, 255, 255, 0.8); font-size: 13px;")
-        right_layout.addWidget(font_size_label)
-        
+        # 字体大小选择器（不显示标签）
         self.font_size_selector = QComboBox()
-        self.font_size_selector.setFixedWidth(100)
+        self.font_size_selector.setToolTip("字体大小选择")
+        self.font_size_selector.setFixedWidth(80)
         self.font_size_selector.addItems(["小", "标准", "大", "超大", "最大"])
         self.font_size_selector.setCurrentIndex(1)  # 默认选择"标准"
         self.font_size_selector.setStyleSheet(self.get_combobox_style())
@@ -465,30 +688,30 @@ class MainWindow(QMainWindow):
         
         right_layout.addWidget(self.font_size_selector)
         
-        # 图片优化选择器
-        image_quality_label = QLabel("图片优化:")
-        image_quality_label.setStyleSheet("color: rgba(255, 255, 255, 0.8); font-size: 13px;")
-        right_layout.addWidget(image_quality_label)
-        
+        # 图片优化选择器（不显示标签）
         self.image_quality_selector = QComboBox()
-        self.image_quality_selector.setFixedWidth(100)
+        self.image_quality_selector.setToolTip("图片优化选择")
+        self.image_quality_selector.setFixedWidth(80)
         self.image_quality_selector.addItems(["不优化", "优化", "超级优化"])
         self.image_quality_selector.setCurrentIndex(1)  # 默认选择"优化"
         self.image_quality_selector.setStyleSheet(self.get_combobox_style())
         right_layout.addWidget(self.image_quality_selector)
         
-        # 导出按钮
-        self.export_btn = QPushButton("📸 导出图片")
+        # 添加分隔线
+        right_separator = self.create_separator()
+        right_layout.addWidget(right_separator)
+        
+        # 导出按钮（简化文本）
+        self.export_btn = QPushButton("导出")
+        self.export_btn.setToolTip("导出图片")
         self.export_btn.clicked.connect(self.export_images)
         self.export_btn.setStyleSheet(self.get_export_button_style())
         right_layout.addWidget(self.export_btn)
         
-        main_layout.addWidget(right_group)
-        
         # 连接标题选择器信号
         self.heading_selector.currentIndexChanged.connect(self.on_heading_changed)
         
-        return toolbar_container
+        return left_toolbar, right_toolbar
     
     def create_separator(self):
         """创建分隔线"""
@@ -499,44 +722,46 @@ class MainWindow(QMainWindow):
         return separator
     
     def get_tool_button_style(self):
-        """工具按钮样式"""
+        """工具按钮样式 - 简洁无装饰，图标居中"""
         return """
             QToolButton {
-                background: rgba(255, 255, 255, 0.08);
-                border: 1px solid rgba(255, 255, 255, 0.2);
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
                 color: white;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: 500;
+                border-radius: 4px;
+                font-size: 11px;
+                font-weight: normal;
                 padding: 2px;
+                text-align: center;
             }
             QToolButton:hover {
-                background: rgba(0, 255, 136, 0.15);
-                border-color: rgba(0, 255, 136, 0.4);
+                background: rgba(0, 255, 136, 0.1);
+                border-color: rgba(0, 255, 136, 0.3);
                 color: #00ff88;
             }
             QToolButton:pressed {
-                background: rgba(0, 255, 136, 0.25);
+                background: rgba(0, 255, 136, 0.2);
             }
         """
     
     def get_action_button_style(self):
-        """操作按钮样式（更小的尺寸）"""
+        """操作按钮样式 - 简洁无装饰，图标居中"""
         return """
             QPushButton {
-                background: rgba(255, 255, 255, 0.08);
-                border: 1px solid rgba(255, 255, 255, 0.2);
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
                 color: white;
-                border-radius: 8px;
-                font-size: 16px;
-                font-weight: 500;
+                border-radius: 4px;
+                font-size: 11px;
+                font-weight: normal;
+                text-align: center;
             }
             QPushButton:hover {
-                background: rgba(255, 255, 255, 0.12);
-                border-color: rgba(255, 255, 255, 0.3);
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(255, 255, 255, 0.2);
             }
             QPushButton:pressed {
-                background: rgba(255, 255, 255, 0.18);
+                background: rgba(255, 255, 255, 0.12);
             }
         """
     
@@ -975,8 +1200,8 @@ class MainWindow(QMainWindow):
     
     # ===== 其他方法保持不变 =====
     
-    def create_glass_container(self, widget, title):
-        """创建毛玻璃容器"""
+    def create_glass_container(self, widget, title, toolbar=None):
+        """创建增强版毛玻璃容器，可选包含工具栏"""
         container = QFrame()
         container.setObjectName("glassContainer")
         
@@ -984,29 +1209,73 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         
-        # 标题栏
+        # 标题栏 - 改进设计
         title_bar = QFrame()
         title_bar.setObjectName("glassTitleBar")
-        title_bar.setFixedHeight(45)
+        title_bar.setFixedHeight(50)
         
         title_layout = QHBoxLayout(title_bar)
         title_layout.setContentsMargins(20, 0, 20, 0)
+        title_layout.setSpacing(15)
+        
+        # 添加微妙的图标占位符（可替换为实际图标）
+        icon_placeholder = QFrame()
+        icon_placeholder.setObjectName("titleIconPlaceholder")
+        icon_placeholder.setFixedSize(18, 18)
+        title_layout.addWidget(icon_placeholder)
         
         title_label = QLabel(title)
         title_label.setObjectName("glassTitle")
         title_layout.addWidget(title_label)
         title_layout.addStretch()
         
-        # 添加组件
-        layout.addWidget(title_bar)
-        layout.addWidget(widget, 1)
+        # 添加装饰性分隔线
+        separator = QFrame()
+        separator.setObjectName("titleSeparator")
+        separator.setFixedHeight(20)
+        separator.setFixedWidth(1)
+        title_layout.addWidget(separator)
         
-        # 添加发光效果
-        glow = QGraphicsDropShadowEffect()
-        glow.setBlurRadius(30)
-        glow.setOffset(0, 0)
-        glow.setColor(QColor(0, 224, 255, 80))
-        widget.setGraphicsEffect(glow)
+        # 添加额外信息标签（例如状态或提示）
+        info_label = QLabel()
+        info_label.setObjectName("titleInfoLabel")
+        info_label.setText("准备就绪")
+        title_layout.addWidget(info_label)
+        
+        layout.addWidget(title_bar)
+        
+        # 如果提供了工具栏，添加在标题栏下方
+        if toolbar:
+            toolbar_container = QFrame()
+            toolbar_container.setObjectName("embeddedToolbarContainer")
+            toolbar_layout = QVBoxLayout(toolbar_container)
+            toolbar_layout.setContentsMargins(15, 0, 15, 0)
+            toolbar_layout.setSpacing(0)
+            toolbar_layout.addWidget(toolbar)
+            layout.addWidget(toolbar_container)
+        
+        # 添加组件 - 增加内边距和层次结构
+        content_container = QFrame()
+        content_container.setObjectName("glassContentContainer")
+        content_layout = QVBoxLayout(content_container)
+        content_layout.setContentsMargins(15, 15, 15, 15)
+        content_layout.addWidget(widget, 1)
+        
+        # 添加发光效果 - 容器和内容区分发光
+        container_glow = QGraphicsDropShadowEffect()
+        container_glow.setBlurRadius(35)
+        container_glow.setOffset(0, 5)
+        container_glow.setColor(QColor(100, 100, 200, 100))
+        container.setGraphicsEffect(container_glow)
+        
+        # 内容组件的发光效果
+        widget_glow = QGraphicsDropShadowEffect()
+        widget_glow.setBlurRadius(25)
+        widget_glow.setOffset(0, 0)
+        widget_glow.setColor(QColor(0, 224, 255, 60))
+        widget.setGraphicsEffect(widget_glow)
+        
+        layout.addWidget(content_container, 1)
         
         return container
     
@@ -1029,107 +1298,175 @@ class MainWindow(QMainWindow):
         self.status_bar.addPermanentWidget(self.char_count_label)
     
     def get_global_styles_qt_compatible(self):
-        """获取Qt兼容的全局样式表"""
+        """获取Qt兼容的全局样式表 - 现代化版本"""
         return """
-        /* 全局字体 */
+        /* 全局字体和重置 */
         * {
             font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+        
+        /* 主窗口 */
+        QMainWindow {
+            background: transparent;
         }
         
         /* 内容区域 */
         #contentArea {
             background: transparent;
+            border: none;
         }
         
-        /* 毛玻璃容器 */
+        /* 现代化毛玻璃容器 */
         #glassContainer {
-            background: rgba(30, 30, 50, 0.8);
+            background: rgba(30, 30, 55, 0.75);
             border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 20px;
+            border-radius: 22px;
         }
         
         #glassTitleBar {
             background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
-                stop: 0 rgba(255, 255, 255, 0.1),
-                stop: 1 rgba(255, 255, 255, 0.05));
+                stop: 0 rgba(255, 255, 255, 0.12),
+                stop: 1 rgba(255, 255, 255, 0.07));
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
+            border-top-left-radius: 22px;
+            border-top-right-radius: 22px;
         }
         
         #glassTitle {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 16px;
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 17px;
             font-weight: 600;
-            letter-spacing: 1px;
+            letter-spacing: 1.2px;
         }
         
-        /* 工具栏容器 */
+        #titleIconPlaceholder {
+            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                stop: 0 rgba(0, 255, 255, 0.8),
+                stop: 1 rgba(255, 0, 255, 0.8));
+            border-radius: 4px;
+        }
+        
+        #titleSeparator {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        #titleInfoLabel {
+            color: rgba(0, 255, 255, 0.7);
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        #glassContentContainer {
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom-left-radius: 22px;
+            border-bottom-right-radius: 22px;
+        }
+        
+        /* 嵌入式工具栏容器 - 编辑器内部使用 */
+        #embeddedToolbarContainer {
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        /* 工具栏容器 - 增强设计 */
         #toolbarContainer {
-            background: rgba(20, 20, 40, 0.95);
+            background: rgba(20, 20, 45, 0.98);
             border-bottom: 2px solid rgba(255, 255, 255, 0.1);
         }
         
         #buttonGroup {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
+            border-radius: 15px;
+            padding: 5px;
         }
         
-        /* 分割器 */
+        /* 按钮美化 */
+        QPushButton {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.85);
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        QPushButton:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.95);
+        }
+        
+        QPushButton:pressed {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        QPushButton:checked {
+            background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                stop: 0 rgba(0, 200, 255, 0.3),
+                stop: 1 rgba(0, 150, 255, 0.3));
+            border: 1px solid rgba(0, 200, 255, 0.4);
+            color: rgba(255, 255, 255, 1);
+        }
+        
+        /* 分割器 - 增强设计 */
         #mainSplitter::handle {
             background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                 stop: 0 rgba(255, 255, 255, 0),
                 stop: 0.5 rgba(255, 255, 255, 0.2),
                 stop: 1 rgba(255, 255, 255, 0));
-            width: 3px;
+            width: 4px;
+            margin: 20px 0;
         }
         
         #mainSplitter::handle:hover {
             background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                 stop: 0 rgba(0, 255, 255, 0),
-                stop: 0.5 rgba(0, 255, 255, 0.5),
+                stop: 0.5 rgba(0, 255, 255, 0.6),
                 stop: 1 rgba(0, 255, 255, 0));
+            width: 4px;
         }
         
-        /* 状态栏 */
+        /* 状态栏 - 现代化设计 */
         #glassStatusBar {
-            background: rgba(20, 20, 40, 0.9);
+            background: rgba(20, 20, 45, 0.95);
             border-top: 1px solid rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.7);
+            color: rgba(255, 255, 255, 0.8);
         }
         
         #statusLabel {
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255, 255, 255, 0.85);
             font-size: 12px;
             font-weight: 500;
             padding: 5px 15px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 15px;
-            margin: 0 5px;
+            margin: 0 8px;
         }
         
-        /* 滚动条美化 */
+        /* 滚动条美化 - 现代化设计 */
         QScrollBar:vertical {
             background: rgba(255, 255, 255, 0.03);
-            width: 12px;
-            border-radius: 6px;
-            margin: 2px;
+            width: 10px;
+            border-radius: 5px;
+            margin: 5px 2px;
         }
         
         QScrollBar::handle:vertical {
-            background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                stop: 0 rgba(0, 255, 255, 0.3),
-                stop: 1 rgba(255, 0, 255, 0.3));
-            border-radius: 6px;
-            min-height: 30px;
+            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                stop: 0 rgba(0, 200, 255, 0.4),
+                stop: 1 rgba(150, 0, 255, 0.4));
+            border-radius: 5px;
+            min-height: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         QScrollBar::handle:vertical:hover {
-            background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                stop: 0 rgba(0, 255, 255, 0.5),
-                stop: 1 rgba(255, 0, 255, 0.5));
+            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                stop: 0 rgba(0, 200, 255, 0.6),
+                stop: 1 rgba(150, 0, 255, 0.6));
         }
         
         QScrollBar::add-line:vertical,
@@ -1137,22 +1474,58 @@ class MainWindow(QMainWindow):
             height: 0px;
         }
         
-        /* 工具提示 */
+        QScrollBar::add-page:vertical,
+        QScrollBar::sub-page:vertical {
+            background: transparent;
+        }
+        
+        /* 工具提示 - 增强设计 */
         QToolTip {
-            background: rgba(30, 30, 50, 0.95);
-            border: 1px solid rgba(0, 255, 136, 0.5);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 12px;
+            background: rgba(30, 30, 55, 0.98);
+            border: 1px solid rgba(0, 200, 255, 0.4);
+            color: rgba(255, 255, 255, 0.95);
+            padding: 7px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+        
+        /* 下拉框美化 */
+        QComboBox {
+            background: rgba(30, 30, 55, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.85);
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        
+        QComboBox:hover {
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+        
+        /* 文本编辑区美化 */
+        QTextEdit, QLineEdit {
+            background: rgba(25, 25, 45, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: rgba(255, 255, 255, 0.9);
+            padding: 12px;
+            font-size: 14px;
+            selection-background-color: rgba(0, 200, 255, 0.4);
+            selection-color: white;
+        }
+        
+        QTextEdit:focus, QLineEdit:focus {
+            border: 1px solid rgba(0, 200, 255, 0.4);
+            background: rgba(30, 30, 50, 0.75);
         }
         """
     
     def resizeEvent(self, event):
         """窗口大小改变时调整背景"""
         super().resizeEvent(event)
-        if hasattr(self, 'aurora_bg'):
-            self.aurora_bg.resize(self.size())
+        if hasattr(self, 'modern_bg'):
+            self.modern_bg.resize(self.size())
     
     def setup_connections(self):
         """设置信号连接"""
@@ -1162,6 +1535,7 @@ class MainWindow(QMainWindow):
         self.theme_selector.currentIndexChanged.connect(self.on_theme_changed)
         self.font_selector.currentIndexChanged.connect(self.on_font_changed)
         self.font_size_selector.currentIndexChanged.connect(self.on_font_size_changed)
+        self.size_selector.currentIndexChanged.connect(self.on_size_selector_changed)
         
         if hasattr(self.preview, 'sizeChanged'):
             self.preview.sizeChanged.connect(self.on_size_changed)
@@ -1249,12 +1623,29 @@ class MainWindow(QMainWindow):
         # 更新状态栏
         self.status_bar.showMessage(f"字体大小: {font_size_name}", 3000)
     
+    def on_size_selector_changed(self, index):
+        """处理尺寸选择器变化"""
+        # 直接调用preview组件的on_size_changed方法，传入索引
+        if hasattr(self.preview, 'on_size_changed'):
+            self.preview.on_size_changed(index)
+        
+        # 尺寸映射用于状态显示
+        size_map = {
+            0: "small",  # 720p
+            1: "medium",  # 1080p
+            2: "large"  # 1440p
+        }
+        size = size_map.get(index, "medium")
+        
+        # 更新状态栏显示
+        self.on_size_changed(size)
+    
     def on_size_changed(self, size):
         """处理尺寸改变"""
         size_display = {
-            "small": "小 (720×960)",
-            "medium": "中 (1080×1440)",
-            "large": "大 (1440×1920)"
+            "small": "720p (720×960)",
+            "medium": "1080p (1080×1440)",
+            "large": "1440p (1440×1920)"
         }
         display_name = size_display.get(size, size)
         self.status_bar.showMessage(f"尺寸: {display_name}", 3000)
@@ -1272,6 +1663,29 @@ class MainWindow(QMainWindow):
             self.editor.editor.clear()
             self.status_bar.showMessage("✅ 内容已清空", 2000)
     
+    def open_file(self):
+        """打开文件"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "打开Markdown文件",
+            "",
+            "Markdown文件 (*.md *.markdown);;所有文件 (*.*)"
+        )
+        
+        if file_path:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    content = file.read()
+                    self.editor.set_text(content)
+                    self.status_bar.showMessage(f"已打开文件: {file_path}", 3000)
+            except Exception as e:
+                QMessageBox.critical(
+                    self, "打开文件失败",
+                    f"无法打开文件:\n{str(e)}",
+                    QMessageBox.StandardButton.Ok
+                )
+                self.status_bar.showMessage("❌ 打开文件失败", 3000)
+
     def export_images(self):
         """导出图片"""
         if not self.editor.get_text().strip():

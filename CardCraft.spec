@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('D:\\RedBookCards-1.0.2\\resources', 'resources'), ('D:\\RedBookCards-1.0.2\\src', 'src')],
+    datas=[('D:\\CardCraft-1.0.1.0\\resources', 'resources'), ('D:\\CardCraft-1.0.1.0\\src', 'src')],
     hiddenimports=['PyQt6.QtCore', 'PyQt6.QtGui', 'PyQt6.QtWidgets', 'PyQt6.QtWebEngineCore', 'PyQt6.QtWebEngineWidgets', 'markdown', 'markdown.extensions', 'markdown.extensions.fenced_code', 'markdown.extensions.tables', 'markdown.extensions.nl2br', 'markdown.extensions.attr_list', 'markdown.extensions.def_list', 'markdown.extensions.footnotes', 'markdown.extensions.toc', 'markdown.extensions.sane_lists', 'markdown.extensions.smarty', 'bs4'],
     hookspath=[],
     hooksconfig={},
@@ -35,6 +35,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    version='D:\\RedBookCards-1.0.2\\version_info.txt',
-    icon=['D:\\RedBookCards-1.0.2\\resources\\icons\\app.ico'],
+    version='D:\\CardCraft-1.0.1.0\\version_info.txt',
+    icon=['D:\\CardCraft-1.0.1.0\\resources\\icons\\app.ico'],
 )

@@ -1,0 +1,52 @@
+# CardCraft v1.0.4 发布说明
+
+发布日期：2025-10-14
+
+## 🖼️ 图片显示优化
+
+### 核心修复
+
+- **长图片显示问题修复**：解决了长图片（如800x1200等非标准比例）被截断的问题
+- **CSS样式优化**：
+  - 将.content类的样式修改为`min-height: 100%`和`overflow: visible !important`
+  - 保持img标签的响应式设置`max-width: 100%; height: auto`
+- **JavaScript改进**：在ensureContentFit函数中设置`content.style.maxHeight = 'none'`和`content.style.overflow = 'visible'`
+- **预览组件优化**：优化了generate_fit_html方法中的缩放逻辑，确保图片完整显示
+
+### 技术改进
+
+- **CSS优化**：移除了不必要的内容高度限制
+- **JavaScript优化**：改进了内容适应逻辑，确保真正的所见即所得
+- **响应式设计**：增强了图片的自适应布局能力
+
+## 📝 版本信息更新
+
+- 更新README.md，添加图片显示优化功能说明
+- 更新version_info.txt，版本号从1.0.2.0更新到1.0.4.0
+- 更新CHANGELOG.md，记录v1.0.4版本的详细更新内容
+- 更新构建脚本，应用版本号为1.0.4
+
+## 🎯 修复验证
+
+此版本修复了以下场景中的图片显示问题：
+- 纵向长图片（如800x1200）在预览和导出时被截断
+- 非标准比例图片在不同主题下的显示异常
+- 图片内容在实际大小预览模式下无法完整查看
+
+## 💡 使用建议
+
+- 对于包含大量图片的文档，建议使用「适应窗口」模式进行预览
+- 导出前请确认所有图片都能完整显示，特别是纵向长图片
+- 如需调整图片大小，请在Markdown中使用HTML img标签的width属性
+
+## 🔧 构建信息
+
+- 构建环境：Python 3.8+, PyQt6 6.5+
+- 推荐使用提供的可执行文件直接运行
+- 源码运行请确保安装了所有依赖：`pip install -r requirements.txt`
+
+## 📚 相关文档
+
+- **使用指南**：docs/使用说明.md
+- **完整更新记录**：docs/CHANGELOG.md
+- **GitHub发布指南**：docs/github_release_guide.md

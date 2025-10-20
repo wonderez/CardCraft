@@ -2,8 +2,31 @@
 # src/ui/editor_widget.py - Qt兼容版本（无警告）
 # ============================================
 from PyQt6.QtWidgets import QTextEdit, QVBoxLayout, QWidget, QLabel, QFrame, QHBoxLayout
-from PyQt6.QtGui import QFont, QTextOption, QPalette, QColor, QSyntaxHighlighter, QTextCharFormat
-from PyQt6.QtCore import pyqtSignal, Qt, QRegularExpression
+from PyQt6.QtGui import QFont, QTextOption, QPalette, QColor, QSyntaxHighlighter, QTextCharFormat, QPainter
+from PyQt6.QtCore import pyqtSignal, Qt, QRegularExpression, QTimer, QRect
+
+class CustomTextEdit(QTextEdit):
+    """自定义QTextEdit类，用于显示光标"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setCursorWidth(2)
+        
+    def paintEvent(self, event):
+        """重写paintEvent方法来绘制光标"""
+        super().paintEvent(event)
+        
+        # 如果编辑器有焦点，绘制光标
+        if self.hasFocus():
+            painter = QPainter(self.viewport())
+            painter.setPen(QColor(255, 255, 255, 230))  # 白色光标
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            
+            # 获取光标位置
+            cursor = self.cursorRect()
+            # 绘制光标线
+            painter.drawLine(cursor.left(), cursor.top(), cursor.left(), cursor.bottom())
+            painter.end()
+
 
 class MarkdownHighlighter(QSyntaxHighlighter):
     """Markdown 语法高亮器"""
@@ -87,7 +110,7 @@ class EditorWidget(QWidget):
         container_layout.setSpacing(0)
         
         # 创建编辑器
-        self.editor = QTextEdit()
+        self.editor = CustomTextEdit()
         self.setup_editor()
         
         # 添加到容器
@@ -178,48 +201,55 @@ class EditorWidget(QWidget):
             }
         """)
         
+        # 设置光标宽度
+        self.editor.setCursorWidth(2)
+        
         # 设置默认文本
-        self.editor.setPlainText("""# 🌸 小红书笔记标题
+        self.editor.setPlainText("""# 🌸 CardCraft 演示
 
-## 今日分享
+## 欢迎使用 CardCraft
 
-大家好呀～今天给大家分享一个超实用的 **Markdown 编辑器**！
+这是一个专业的 **Markdown 卡片生成器**，专为小红书风格设计！
 
-### ✨ 主要功能
+### ✨ 核心功能
 
-1. **实时预览** - 左边写，右边看
-2. **智能分页** - 自动适配小红书卡片尺寸
-3. **一键导出** - 批量生成精美图片
+- **实时预览**：编辑即见效果
+- **智能分页**：自动适配卡片尺寸
+- **图片导出**：一键生成高质量图片
+- **主题切换**：多种精美风格可选
 
-### 📝 使用方法
+### 📝 快速上手
 
-- 在左侧输入 Markdown 文本
-- 右侧实时显示预览效果
-- 点击导出按钮保存图片
+1. 在左侧编辑 Markdown
+2. 右侧查看分页预览
+3. 选择主题并导出
 
-> 💡 小贴士：支持所有常用的 Markdown 语法哦～
+> 💡 提示：支持任务列表、代码高亮等高级语法
+
+### 任务列表示例
+
+- [x] 编辑 Markdown
+- [ ] 预览效果
+- [x] 导出图片
 
 ### 代码示例
 
 ```python
-def hello():
-    print("Hello, 小红书!")
-    return "❤️"
+def greet():
+    return "Hello, CardCraft!"
 ```
 
 ### 表格示例
 
-| 功能 | 描述 | 状态 |
+| 功能 | 状态 | 描述 |
 |------|------|------|
-| 编辑 | Markdown编辑器 | ✅ |
-| 预览 | 实时渲染 | ✅ |
-| 导出 | 图片生成 | ✅ |
+| 编辑 | ✅ | 实时编辑 |
+| 预览 | ✅ | 分页渲染 |
+| 导出 | ✅ | 图片生成 |
 
 ---
 
-喜欢的话记得 **点赞收藏** 哦～ ❤️
-
-关注我，获取更多实用工具！""")
+试试这些功能吧！ ❤️""")
         
         # 连接信号
         self.editor.textChanged.connect(self.on_text_changed)

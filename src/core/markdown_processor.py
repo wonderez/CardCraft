@@ -6,6 +6,9 @@ from markdown.extensions import fenced_code, tables
 import re
 import os
 from pathlib import Path
+from typing import List
+from bs4 import BeautifulSoup
+import logging
 
 class TaskListExtension(markdown.Extension):
     """自定义任务列表扩展"""
@@ -71,9 +74,8 @@ class TaskListPostprocessor(markdown.postprocessors.Postprocessor):
 
 class MarkdownProcessor:
     def __init__(self):
-        # 初始化 Markdown 扩展
-        self.extensions = [
-            TaskListExtension(),                # 放到最前面，优先处理任务列表
+        self.extensions: List[str] = [
+            TaskListExtension(),
             'meta',
             'toc',
             'abbr',
@@ -104,35 +106,29 @@ class MarkdownProcessor:
     def parse(self, text: str) -> str:
         """解析 Markdown 文本为 HTML"""
         try:
-            # 新增：移除标题末尾的装饰性符号
             text = self._remove_title_decorations(text)
-            
-            # 新增：移除标题后的换行符
             text = self._remove_title_newlines(text)
-            
-            # 1. 先处理分页标记
             text = self._process_pagebreaks_before_markdown(text)
             
-            # 2. 正常让 Markdown 解析（包括图片）
             md = markdown.Markdown(
                 extensions=self.extensions,
                 extension_configs=self.extension_configs
             )
             html = md.convert(text)
             
-            # 3. 处理本地图片路径
             html = self._fix_local_image_paths(html)
-            
-            # 4. 添加任务列表样式
-            html = self._add_tasklist_styles(html)
-            
-            # 5. 添加任务列表样式
             html = self._add_tasklist_styles(html)
             
             return html
             
+        except ValueError as ve:
+            logging.error(f"Markdown value error: {ve}")
+            return f"<p style='color: red;'>值错误: {str(ve)}</p>"
+        except ImportError as ie:
+            logging.error(f"Markdown import error: {ie}")
+            return f"<p style='color: red;'>导入错误: {str(ie)}</p>"
         except Exception as e:
-            print(f"Markdown 解析错误: {e}")
+            logging.error(f"Markdown 解析错误: {e}")
             return f"<p style='color: red;'>解析错误: {str(e)}</p>"
     
     def _fix_local_image_paths(self, html: str) -> str:
@@ -148,7 +144,7 @@ class MarkdownProcessor:
             if src.startswith(('http://', 'https://', 'data:', 'file:')):
                 img['data-protected'] = 'true'
                 if not img.get('style'):
-                    img['style'] = 'max-width: 100%; height: auto;'
+                    img['style'] = 'max-width: 90%; max-height: 50vh; height: auto; display: block; margin: 0 auto;'
                 continue
             # Windows 绝对路径：任意盘符，如 E:\ 或 E:/ 开头
             if re.match(r'^[A-Za-z]:[\\/]', src):
@@ -166,7 +162,7 @@ class MarkdownProcessor:
             img['src'] = src
             # 默认样式
             if not img.get('style'):
-                img['style'] = 'max-width: 100%; height: auto;'
+                img['style'] = 'max-width: 90%; max-height: 50vh; height: auto; display: block; margin: 0 auto;'
             img['data-protected'] = 'true'
         return str(soup)
     
@@ -224,15 +220,44 @@ class MarkdownProcessor:
         return text
     
     def _add_tasklist_styles(self, html: str) -> str:
-        """清理HTML标题后的空白字符"""
-        from bs4 import BeautifulSoup
+        """为任务列表添加样式并清理HTML标题后的空白字符"""
         soup = BeautifulSoup(html, 'html.parser')
         
         for header in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
-            # 移除标题后的空白节点
-            for sibling in header.next_siblings:
+            for sibling in list(header.next_siblings):
                 if isinstance(sibling, str) and sibling.strip() == '':
                     sibling.replace_with('')
+                else:
+                    break
+        
+        if soup.find('input', {'type': 'checkbox', 'class': 'task-list-checkbox'}):
+            style_tag = soup.new_tag('style')
+            style_tag.string = """
+                .task-list {
+                    list-style-type: none;
+                    padding-left: 0;
+                }
+                
+                .task-list-item {
+                    list-style-type: none;
+                    position: relative;
+                    padding-left: 25px;
+                    margin-bottom: 8px;
+                }
+                
+                .task-list-checkbox {
+                    position: absolute;
+                    left: 0;
+                    top: 3px;
+                    margin-right: 10px;
+                }
+            """
+            if soup.head:
+                soup.head.append(style_tag)
+            else:
+                new_head = soup.new_tag('head')
+                new_head.append(style_tag)
+                soup.html.insert(0, new_head)
         
         return str(soup)
     

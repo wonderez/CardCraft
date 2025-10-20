@@ -97,7 +97,8 @@ class PreviewWidget(QWidget):
         container_layout.setSpacing(0)
         
         # 创建顶部控制栏（包含尺寸和模式选择）
-        top_control_bar = self.create_top_control_bar()
+        # 隐藏顶部控制栏以消除预览图片上方的空白区域
+        # top_control_bar = self.create_top_control_bar()
         
         # 创建WebView容器
         self.create_web_view_container()
@@ -106,7 +107,7 @@ class PreviewWidget(QWidget):
         bottom_control_bar = self.create_bottom_control_bar()
         
         # 组装布局
-        container_layout.addWidget(top_control_bar)
+        # container_layout.addWidget(top_control_bar)
         container_layout.addWidget(self.web_container, 1)
         container_layout.addWidget(bottom_control_bar)
         
@@ -191,9 +192,11 @@ class PreviewWidget(QWidget):
         mode_layout.addWidget(self.actual_mode_btn)
         
         # 组装顶部控制栏
-        layout.addWidget(size_container)
-        layout.addSpacing(30)
-        layout.addWidget(mode_container)
+        # 隐藏原始尺寸选择器
+        # layout.addWidget(size_container)
+        # 隐藏模式选择器
+        # layout.addSpacing(30)
+        # layout.addWidget(mode_container)
         layout.addStretch()
         
         return control_bar
@@ -279,7 +282,8 @@ class PreviewWidget(QWidget):
         # 设置滚动区域
         self.web_container.setWidget(self.web_view)
         self.web_container.setWidgetResizable(True)
-        self.web_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # 移除居中对齐，这可能影响缩放
+        # self.web_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         # 默认设置为适应窗口模式
         self.web_container.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -363,8 +367,10 @@ class PreviewWidget(QWidget):
         """连接信号"""
         self.prev_btn.clicked.connect(self.prev_page)
         self.next_btn.clicked.connect(self.next_page)
-        self.size_selector.currentIndexChanged.connect(self.on_size_changed)
-        self.mode_group.buttonClicked.connect(self.on_mode_changed)
+        # 隐藏了尺寸选择器，注释掉相关信号连接
+        # self.size_selector.currentIndexChanged.connect(self.on_size_changed)
+        # 隐藏了模式选择器，注释掉相关信号连接
+        # self.mode_group.buttonClicked.connect(self.on_mode_changed)
     
     def keyPressEvent(self, event):
         """处理键盘事件"""
@@ -534,6 +540,17 @@ class PreviewWidget(QWidget):
             *::-webkit-scrollbar {
                 display: none !important;
             }
+            
+            /* 强制图片安全尺寸，避免实际大小模式下溢出 */
+            img {
+                max-width: 100% !important;
+                max-height: 100% !important;
+                height: auto !important;
+                width: auto !important;
+                object-fit: contain !important;
+                display: block !important;
+                margin: 50px auto !important;
+            }
         </style>
         
         <script>
@@ -555,7 +572,7 @@ class PreviewWidget(QWidget):
                 
                 // 禁用键盘滚动
                 document.addEventListener('keydown', function(e) {
-                    const scrollKeys = [32, 33, 34, 35, 36, 37, 38, 39, 40];
+                    var scrollKeys = [32, 33, 34, 35, 36, 37, 38, 39, 40];
                     if (scrollKeys.includes(e.keyCode)) {
                         e.preventDefault();
                         return false;
@@ -582,15 +599,16 @@ class PreviewWidget(QWidget):
         """生成适应窗口的HTML"""
         base_html = self.html_generator.generate(content)
         
-        scale_script = f"""
+        # 使用CSS object-fit和contain属性实现更好的缩放效果
+        scale_script = """
         <style>
-            * {{
+            * {
                 margin: 0;
                 padding: 0;
                 box-sizing: border-box;
-            }}
+            }
             
-            html, body {{
+            html, body {
                 width: 100%;
                 height: 100%;
                 overflow: hidden;
@@ -598,73 +616,141 @@ class PreviewWidget(QWidget):
                 display: flex;
                 justify-content: center;
                 align-items: center;
-            }}
+            }
             
-            #viewport-container {{
-                position: relative;
-                width: 100vw;
-                height: 100vh;
+            /* 使用容器包装内容，确保内容完全适应窗口 */
+            .viewport-container {
+                width: 100%;
+                height: 100%;
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                overflow: hidden;
-            }}
-            
-            #content-wrapper {{
                 position: relative;
-                width: {target_width}px;
-                height: {target_height}px;
-                transform-origin: center center;
-                flex-shrink: 0;
-            }}
+            }
+            
+            #content-wrapper {
+                position: relative;
+                width: __TW__px;
+                height: __TH__px;
+                 max-width: 100%;
+                 max-height: 100%;
+                 object-fit: contain;
+                 border: none !important;
+                 outline: none !important;
+                 box-shadow: none !important;
+                 /* 使用transform scale进行缩放 */
+                 transform-origin: center center;
+                 transform: none;
+                 zoom: 1;
+             }
+            
+            /* 优化图片显示 */
+            img {
+-                max-width: 90% !important;
+                max-width: 100% !important;
+                max-height: 100% !important;
+                height: auto !important;
+                width: auto !important;
+                object-fit: contain !important;
+                display: block !important;
+                margin: 50px auto !important;
+            }
         </style>
         
         <script>
-            document.addEventListener('DOMContentLoaded', function() {{
-                if (!document.getElementById('viewport-container')) {{
-                    const viewportContainer = document.createElement('div');
-                    viewportContainer.id = 'viewport-container';
-                    
-                    const contentWrapper = document.createElement('div');
-                    contentWrapper.id = 'content-wrapper';
-                    
-                    while (document.body.firstChild) {{
-                        contentWrapper.appendChild(document.body.firstChild);
-                    }}
-                    
-                    viewportContainer.appendChild(contentWrapper);
-                    document.body.appendChild(viewportContainer);
-                }}
+            document.addEventListener('DOMContentLoaded', function() {
+                // 创建容器结构
+                var viewportContainer = document.createElement('div');
+                viewportContainer.className = 'viewport-container';
                 
-                function adjustScale() {{
-                    const wrapper = document.getElementById('content-wrapper');
-                    const container = document.getElementById('viewport-container');
-                    
-                    if (!wrapper || !container) return;
-                    
-                    const availableWidth = container.clientWidth;
-                    const availableHeight = container.clientHeight;
-                    
-                    const targetWidth = {target_width};
-                    const targetHeight = {target_height};
-                    
-                    const padding = 40;
-                    const scaleX = (availableWidth - padding) / targetWidth;
-                    const scaleY = (availableHeight - padding) / targetHeight;
-                    
-                    const scale = Math.min(scaleX, scaleY, 1.0);
-                    
-                    wrapper.style.transform = `scale(${{scale}})`;
-                }}
+                var contentWrapper = document.createElement('div');
+                contentWrapper.id = 'content-wrapper';
                 
+                // 保存并移除body的所有子元素
+                var bodyChildren = [];
+                while (document.body.firstChild) {
+                    bodyChildren.push(document.body.firstChild);
+                    document.body.removeChild(document.body.firstChild);
+                }
+                
+                // 将所有子元素添加到内容包装器中
+                bodyChildren.forEach(child => contentWrapper.appendChild(child));
+                
+                // 将内容包装器添加到容器中，再将容器添加到body
+                viewportContainer.appendChild(contentWrapper);
+                document.body.appendChild(viewportContainer);
+                
+                // 处理所有图片
+                var images = document.querySelectorAll('img');
+                images.forEach(img => {
+                    // 确保图片加载完成后正确显示
+                    img.style.maxWidth = '100%';
+                    img.style.maxHeight = '100%';
+                    img.style.height = 'auto';
+                    img.style.width = 'auto';
+                    img.style.objectFit = 'contain';
+                    img.style.display = 'block';
+                    img.style.margin = '50px auto';
+                    
+                    // 监听图片加载完成事件
+                    img.onload = function() {
+                        adjustScale();
+                    };
+                });
+                
+                function adjustScale() {
+                    var wrapper = document.getElementById('content-wrapper');
+                    if (!wrapper) return;
+                    
+                    // 获取视口尺寸
+                    var viewportWidth = viewportContainer.clientWidth;
+                    var viewportHeight = window.innerHeight;
+                    
+                    // 减去一些边距，确保内容完全可见
+                    var marginWidth = 60; // 左右边距各30px
+                    var marginHeight = 120; // 上下边距各60px，增加边距确保图片完全可见
+                    
+                    var availableWidth = viewportWidth - marginWidth;
+                    var availableHeight = viewportHeight - marginHeight;
+                    
+                    var targetWidth_val = __TW__;
+                    var targetHeight_val = __TH__;
+                    
+                    // 计算缩放比例，确保内容完全适应窗口
+                    var scaleX = availableWidth / targetWidth_val;
+                    var scaleY = availableHeight / targetHeight_val;
+                    
+                    // 只在内容比视口大时缩小，避免放大导致模糊
+                    var scale = Math.min(1, Math.min(scaleX, scaleY) * 0.98);
+                    
+                    // 应用缩放（使用Chrome支持的zoom，避免transform导致的裁剪/模糊）
+                    wrapper.style.transform = 'none';
+                    wrapper.style.zoom = String(scale);
+                    
+                    // 添加调试信息
+                    console.log('Viewport size:', viewportWidth, 'x', viewportHeight);
+                    console.log('Available size:', availableWidth, 'x', availableHeight);
+                    console.log('Target size:', targetWidth_val, 'x', targetHeight_val);
+                    console.log('Scale factors:', scaleX, scaleY, 'Final scale:', scale);
+                }
+                
+                // 初始调整
                 setTimeout(adjustScale, 100);
                 window.addEventListener('resize', adjustScale);
                 
-                const observer = new ResizeObserver(adjustScale);
-                observer.observe(document.getElementById('viewport-container'));
-            }});
+                // 观察窗口大小变化
+                var observer = new ResizeObserver(adjustScale);
+                observer.observe(document.documentElement);
+                
+                // 强制立即调整一次
+                setTimeout(adjustScale, 300);
+                setTimeout(adjustScale, 1000);
+            });
         </script>
         """
+        
+        # 注入目标尺寸数值
+        scale_script = scale_script.replace('__TW__', str(target_width)).replace('__TH__', str(target_height))
         
         full_html = base_html.replace('</head>', scale_script + '</head>')
         return full_html

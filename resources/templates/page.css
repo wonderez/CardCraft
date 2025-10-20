@@ -1,0 +1,153 @@
+/* 页面布局 */
+html, body {
+    width: {{page_width}}px;
+    height: {{page_height}}px;
+    overflow: hidden !important;
+    margin: 0;
+    padding: 0;
+    border: none !important;
+    outline: none !important;
+}
+
+.container {
+    width: {{page_width}}px;
+    height: {{page_height}}px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    border: none !important;
+    outline: none !important;
+}
+
+.card {
+    width: 100%;
+    height: 100%;
+    background: {{card_background}};
+    border-radius: 20px;
+    box-shadow: 0 20px 60px {{shadow_color1}},
+                0 10px 30px {{shadow_color2}};
+    overflow: hidden;
+    position: relative;
+    border: none !important;
+    outline: none !important;
+}
+
+.content {
+    padding: 50px 45px 70px 45px;
+    color: var(--text-color);
+    line-height: 1.85;
+    height: 100%;
+    overflow: visible !important;
+    position: relative;
+}
+
+/* 页码信息 */
+.page-info {
+    position: absolute;
+    bottom: 20px;
+    right: 30px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 16px;
+    background: {{page_info_bg}};
+    border-radius: 20px;
+    border: 1px solid {{page_info_border}};
+}
+
+.page-number {
+    font-weight: 700;
+    color: var(--primary-color);
+    font-size: 14px;
+}
+
+.page-separator {
+    color: {{separator_color}};
+    font-size: 12px;
+}
+
+.page-total {
+    color: {{total_color}};
+    font-size: 14px;
+}
+
+/* 装饰元素 */
+.card::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, {{deco_color1}} 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.card::after {
+    content: "";
+    position: absolute;
+    bottom: -50%;
+    left: -50%;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, {{deco_color2}} 0%, transparent 70%);
+    pointer-events: none;
+}
+
+/* 响应式图片 */
+img {
+    max-width: 100%;
+    max-height: 100%;
+    height: auto !important;
+    width: auto !important;
+    object-fit: contain;
+    display: block;
+    margin: 50px auto;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px {{img_shadow}};
+}
+
+/* 隐藏滚动条 */
+::-webkit-scrollbar {
+    display: none !important;
+}
+
+* {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
+
+/* 打印样式 */
+@media print {
+    body {
+        background: white;
+        padding: 0;
+    }
+    
+    .container {
+        max-width: 100%;
+    }
+    
+    .card {
+        box-shadow: none;
+        border-radius: 0;
+        page-break-inside: avoid;
+    }
+    
+    .card::before,
+    .card::after {
+        display: none;
+    }
+}
+
+/* 完全隐藏分页标记 */
+.pagebreak-marker {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    visibility: hidden !important;
+}
